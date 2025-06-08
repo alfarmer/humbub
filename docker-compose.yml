@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  humhub:
+    image: mriedmann/humhub:latest
+    restart: always
+    platform: linux/amd64
+    ports:
+      - "8080:80"
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: humhub
+      DB_USER: humhub
+      DB_PASSWORD: supersecretpassword
+    volumes:
+      - humhub_data:/var/www/localhost/htdocs
+
+  db:
+    image: mariadb:10.5
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: humhub
+      MYSQL_USER: humhub
+      MYSQL_PASSWORD: supersecretpassword
+    volumes:
+      - humhub_db_data:/var/lib/mysql
+
+  neo4j:
+    image: neo4j:5.14
+    restart: always
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/password
+    volumes:
+      - neo4j_data:/data
+
+  humhub_cron:
+    image: mriedmann/humhub:latest
+    platform: linux/amd64
+    depends_on:
+      - humhub
+    volumes:
+      - humhub_data:/var/www/localhost/htdocs
+    entrypoint: >
+      sh -c "while true; do
+        php /var/www/localhost/htdocs/protected/yii queue/run >/dev/null 2>&1;
+        php /var/www/localhost/htdocs/protected/yii cron/run >/dev/null 2>&1;
+        sleep 60;
+      done"
+
+volumes:
+  humhub_data:
+  humhub_db_data:
+  neo4j_data:
