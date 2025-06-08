@@ -7,29 +7,22 @@ on:
 
 jobs:
   deploy:
+    name: SSH Deploy to GCP
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
+    - name: Checkout Repository
       uses: actions/checkout@v3
 
-    - name: Copy files to GCP VM via SSH
-      uses: appleboy/scp-action@master
-      with:
-        host: ${{ secrets.GCP_VM_IP }}
-        username: ${{ secrets.GCP_VM_USER }}
-        key: ${{ secrets.GCP_SSH_KEY }}
-        source: "."
-        target: "~/humbub"
-
-    - name: SSH & deploy
+    - name: Deploy via SSH
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.GCP_VM_IP }}
         username: ${{ secrets.GCP_VM_USER }}
         key: ${{ secrets.GCP_SSH_KEY }}
         script: |
-          cd ~/humbub
-          git pull
-          docker-compose down -v
+          set -e
+          cd ~/humbub || git clone https://github.com/alfarmer/humbub.git && cd humbub
+          git pull origin main
+          docker-compose down -v --remove-orphans
           docker-compose up -d --build
